@@ -1,0 +1,24 @@
+Liber809 ReadMe
+================
+This repostiory contains code for the Liber809 Project.
+
+All 6809 sources are built with the 'mamou' assembler, available from the ToolShed project
+on SourceForge: http://sourceforge.net/projects/toolshed/develop
+
+
+Atari XL/XE related source files are in the atari/ folder and are as follows:
+
+atari/atari.d
+	Definitions file for the Atari XL/XE
+
+atari/dwread.asm
+	DriveWire read routine for the Atari SIO
+
+atari/dwwrite.asm
+	DriveWire write routine for the Atari SIO
+
+atari/liber809.asm
+	Main source file for the Liber809 firmware for the Atari XL/XE
+
+atari/makefile
+	Makefile to build the firmware
