@@ -60,34 +60,6 @@ ATARI.D        set       1
                ttl       NitrOS-9 System Definitions for the Atari XE/XL
 
 
-
-**********************************
-* Power Line Frequency Definitions
-*
-Hz50           equ       1                   Assemble clock for 50 hz power
-Hz60           equ       2                   Assemble clock for 60 hz power
-PwrLnFrq       set       Hz60                Set to Appropriate freq
-
-
-**********************************
-* Ticks per second
-*
-               ifeq      PwrLnFrq-Hz50
-TkPerSec       set       50
-               else      
-TkPerSec       set       60
-               endc      
-
-
-*************************************************
-*
-* NitrOS-9 Level 1 Section
-*
-*************************************************
-
-HW.Page        set       $FF                 Device descriptor hardware page
-
-
 ********************************************************************
 * NitrOS-9 Memory Definitions for the Atari XE/XL
 *
@@ -112,7 +84,7 @@ G.CharSetAddr  equ       $F800
 * POKEY requires shadow registers.  We allocate them in the kernel's DP
 * (Yes, we are stealing an existing variable that is so old it should be
 *  removed from os9defs)
-D.IRQENShdw    equ       D.WDBtDr
+D.IRQENShdw    equ       $001C
 
 
 ********************************************************************
