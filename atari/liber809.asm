@@ -297,35 +297,37 @@ ClearIO
 loop
                ldx		#CTIA
                clr		b,x
-               ldx		#POKEY
-               clr		b,x
                ldx		#ANTIC
+               clr		b,x
+               ldx		#POKEY
                clr		b,x
                cmpb      #PORTB&$0F
                beq       loopbot@
                ldx		#PIA
                clr		b,x
 loopbot@
-               decb
+               incb
                bne		loop
                
 * setup the PIA
 SetupPIA
-               ldd	     #$3C*256+$CF   set PORTB to port
-               sta       PBCTL
-               stb       PORTB
-               lda       #$38
-               sta	     PACTL
-               sta	     PBCTL
-               clr	     PORTA
-               ldb       #$FF
-               stb	     PORTB
-               lda	     #$3C		     switch back to ports
-               sta	     PACTL
-               sta	     PBCTL
-               lda       PORTA
-               lda       PORTB
-               
+	          lda	     #$3C
+          	STA	     PBCTL	;precondition port B outputs
+          	LDA	     #$CF
+               STA	     PORTB	;initialize port B
+               LDA	     #$38
+               STA	     PACTL	;select data direction register
+               STA	     PBCTL	;select data direction register
+               LDA	     #$00
+               STA	     PORTA	;all inputs
+               LDA	     #$FF
+               STA	     PORTB	;all outputs
+               LDA	     #$3C
+               STA	     PACTL	;back to port
+               STA	     PBCTL	;back to port
+               LDA	     PORTB	;clear interrupts
+               LDA	     PORTA	;clear interrupts
+	
 * setup POKEY here
 SetupPOKEY
           	lda		#$22           get POKEY out of initialization mode and set ch.4
@@ -359,18 +361,52 @@ RAMCODE
 * The following is run from RAM
 * Copy ROMTOP-$FFFF from ROM to RAM
                ldx       #ROMTOP
-               lda       PORTA
-               ora       #$01
-               ldb       PORTB
-               andb      #$FE
+               lda       PORTB
+               tfr       a,b
+               ora       #%00000001
+               andb      #%11111110
 copyloop@
                sta       PORTB          ROM mode
+               bsr       RAMROMCheck    is it ROM?
+               bcc       GoCrazy        if not, go crazy
                ldu       ,x
                stb       PORTB          RAM mode
+               bsr       RAMROMCheck    is it RAM?
+               bcs       GoCrazy        if not, go crazy
                stu       ,x++
                cmpx      #$0000
                bne       copyloop@
+
                jmp       >Continue
+
+**** A check to see the address at X is ROM (carry set) or RAM (carry clear)
+RAMROMCheck
+               pshs      d
+               ldd       ,x             get two bytes at X
+               exg       a,b            swap
+               std       ,x             write back
+               cmpd      ,x             compare to what we wrote
+               bne       itsrom@        if not same, it is ROM
+               exg       a,b            else its RAM... swap back
+               std       ,x             save back
+               clrb                     clear carry
+               puls      d,pc
+itsrom@
+               comb                     set carry
+               puls      d,pc
+
+* Test snippet used to debug code
+* just sets the background to a color and cycles through forever
+GoCrazy
+          clra
+gl@       inca
+          sta  COLBK
+          lbrn $0000
+          cmpx ,s
+          bra  gl@
+
+
+          
 RAMCODELEN     equ       *-RAMCODE
                ENDC
 
@@ -433,66 +469,63 @@ ReadLoop
 *               leax $800,x
 *               leay 8,y            skip sectors $50-$57 ($D000-$D7FFF)
 *keepon
-               pshs a,x,y
-               pshs y              put LSN bits 15-0 on stack
-               clr  ,-s            put LSN bits 23-16 on stack ($00)
-               ldy  #$0000
-               ldb  V.NODrive,u
-               pshs d              put OP code and drive # on stack
-               leax ,s
-               ldy  #$0005
-               lbsr DWWrite
-               leas 5,s
+               pshs      a,x,y
+               pshs      y              put LSN bits 15-0 on stack
+               clr       ,-s            put LSN bits 23-16 on stack ($00)
+               ldy       #$0000
+               ldb       V.NODrive,u
+               pshs      d              put OP code and drive # on stack
+               leax      ,s
+               ldy       #$0005
+               lbsr      DWWrite
+               leas      5,s
 
 * Get Sector Data
-               ldy  #$100
-               ldx  1,s
+               ldy       #$100
+               ldx       1,s
                clra
-               lbsr DWRead
+               lbsr      DWRead
 * Note: we ignore any error in reading and send whatever CRC we have.
-*               bcc  sendcrc
-*               puls a,x,y
-*               bra  ReRead
+*               bcc      sendcrc
+*               puls     a,x,y
+*               bra      ReRead
           
 * Send CRC
 sendcrc
-          pshs y
-          leax ,s
-          ldy  #$0002
-          lbsr DWWrite
-          leas 2,s
+               pshs      y
+               leax      ,s
+               ldy       #$0002
+               lbsr      DWWrite
+               leas      2,s
           
 * Get Error Code
-          pshs a
-          leax ,s
-          ldy  #$0001
-          clra
-          lbsr DWRead          
-          puls d,x,y
-          tsta
-          beq  ReadOk
+               pshs      a
+               leax      ,s
+               ldy       #$0001
+               clra
+               lbsr      DWRead          
+               puls      d,x,y
+               tsta
+               beq       ReadOk
 ReRead
-          lbsr WaitABit
-          ldb  #OP_REREADEX
-          lda  #'?
-          pshs b,x,y
-          lbsr WriteChar
-          puls a,x,y     
-          bra  ReadLoop
+               lbsr      WaitABit
+               ldb       #OP_REREADEX
+               lda       #'?
+               pshs      b,x,y
+               lbsr      WriteChar
+               puls      a,x,y     
+               bra       ReadLoop
 ReadOk          
-          lda  #'.
-          pshs b,x,y
-          lbsr WriteChar
-          puls a,x,y
-          leax $100,x
-          leay 1,y
-          cmpx #KICKEND
-          bne  ReadLoop
-          ldx  -2,x
+               lda       #'.
+               pshs      b,x,y
+               lbsr      WriteChar
+               puls      a,x,y
+               leax      $100,x
+               leay      1,y
+               cmpx      #KICKEND
+               bne       ReadLoop
+               ldx       -2,x
 
-*          leax JumpMsg,pcr
-*          lbsr WriteString
-          
                leax      JumpMsg,pcr
                lbsr      WriteString
 
@@ -510,16 +543,7 @@ MountFailed
                
 Loop4Ever      bra       Loop4Ever
 
-* Test snippet used to debug code
-*green     clra
-*gl@       inca
-*          sta  COLBK
-*          lbrn $0000
-*          cmpx ,s
-*          bra  gl@
 
-
-          
 WaitABit       pshs      x
                ldx       #$0000
 loop@               
