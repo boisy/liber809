@@ -52,7 +52,7 @@ REVMINOR       equ  2
 KICKSTART      equ       $2000               address to load 'kick'
 KICKEND        equ       KICKSTART+8192
 SCRMEM         equ       $0500
-SCRMEMEND      equ       $0500+(40*24)
+SCRMEMEND      equ       $0500+(G.Rows*G.Cols)
 STACK          equ       SCRMEM
 ROMTOP         equ       $F400
 
@@ -70,7 +70,7 @@ BAUD1152K 	EQU		$0400
 BAUDRATE       EQU       BAUD576K
 
 * Set the following to 1 to run in All-RAM Mode!
-ALLRAM_MODE    EQU       0
+*ALLRAM_MODE    EQU       1
 RAMLOC         equ       $1000
 
                org       ROMTOP
@@ -285,8 +285,8 @@ ResetMsg       fcc       "Press RESET to try again"
 * ENTRY POINT!
 RESETVct
 * mask interrupts and setup the stack
-               orcc	#$50
-               lds	#STACK
+               orcc	     #$50
+               lds	     #STACK
 
 * clear the I/O space between $D000-$D3FFF
 ClearIO
@@ -383,11 +383,13 @@ copyloop@
 RAMROMCheck
                pshs      d
                ldd       ,x             get two bytes at X
-               exg       a,b            swap
+               coma                     complement
+               comb
                std       ,x             write back
                cmpd      ,x             compare to what we wrote
                bne       itsrom@        if not same, it is ROM
-               exg       a,b            else its RAM... swap back
+               coma                     else its RAM... re complement
+               comb
                std       ,x             save back
                clrb                     clear carry
                puls      d,pc
@@ -398,14 +400,12 @@ itsrom@
 * Test snippet used to debug code
 * just sets the background to a color and cycles through forever
 GoCrazy
-          clra
-gl@       inca
-          sta  COLBK
-          lbrn $0000
-          cmpx ,s
-          bra  gl@
-
-
+               clra
+gl@            inca
+               sta       COLBK
+               lbrn      $0000
+               cmpx      ,s
+               bra       gl@
           
 RAMCODELEN     equ       *-RAMCODE
                ENDC
@@ -552,165 +552,165 @@ loop@
                puls      x,pc
 
 VTIOInit      
-		pshs 	u
+		     pshs 	u
 
-		leax 	ChkSpc,pcr
-		stx  	V.EscVect,u
+     		leax 	ChkSpc,pcr
+	     	stx  	V.EscVect,u
 		
 * setup static vars
-		clra
-		clrb
-		std	     V.CurRow,u
+               clra
+               clrb
+               std	     V.CurRow,u
 
 * Clear screen memory
-          ldx       #SCRMEM
-          ldy       #40*24
-          ldd       #$0000
+               ldx       #SCRMEM
+               ldy       #40*24
+               ldd       #$0000
 clearLoop@
-     	std	     ,x++
-          leay      -2,y
-     	bne	     clearLoop@
+          	std	     ,x++
+               leay      -2,y
+     	     bne	     clearLoop@
      	
 * tell the ANTIC where the dlist is
-          ldd       #DList
-          exg       a,b
-		std	     DLISTL
+               ldd       #DList
+               exg       a,b
+		     std	     DLISTL
 
 * tell the ANTIC where the character set is (page aligned, currently in Krn)		
-		lda	     #ROMTOP>>8
-		sta	     CHBASE
+     		lda	     #ROMTOP>>8
+	     	sta	     CHBASE
 		
 * set background color
-		lda	     #$00
- 		sta	     COLBK
+     		lda	     #$00
+ 	     	sta	     COLBK
 
 * set text color
-		lda	     #$0F
-* 		sta	     COLPF0
- 		sta	     COLPF1
-* 		sta	     COLPF3
-		lda	     #$94
- 		sta	     COLPF2
+     		lda	     #$0F
+* 	     	sta	     COLPF0
+ 		     sta	     COLPF1
+*     		sta	     COLPF3
+	     	lda	     #$94
+ 		     sta	     COLPF2
  		
 * tell ANTIC to start DMA
-		lda	     #$22
- 		sta	     DMACTL
+     		lda	     #$22
+ 	     	sta	     DMACTL
 
 * tell ANTIC to enable character set 2
-		lda	     #$02
- 		sta	     CHACTL
+     		lda	     #$02
+ 	     	sta	     CHACTL
 
-initex	puls	     u,pc
+initex	     puls	     u,pc
 
 
-HexTable  fcc       "0123456789ABCDEF"
+HexTable       fcc       "0123456789ABCDEF"
           
 * D = hex value to write
 WriteHexWord
-          pshs      d,x,y
-          leax      HexTable,pcr
-          lsra
-          lsra
-          lsra
-          lsra
-          lda       a,x
-          bsr       WriteChar
-          lda       ,s
-          anda      #$0F
-          lda       a,x
-          bsr       WriteChar
-          ldb       1,s
-          lsrb
-          lsrb
-          lsrb
-          lsrb
-          lda       b,x
-          bsr       WriteChar
-          ldb       1,s
-          andb      #$0F
-          lda       b,x
-          bsr       WriteChar
-          puls      d,x,y,pc
+               pshs      d,x,y
+               leax      HexTable,pcr
+               lsra
+               lsra
+               lsra
+               lsra
+               lda       a,x
+               bsr       WriteChar
+               lda       ,s
+               anda      #$0F
+               lda       a,x
+               bsr       WriteChar
+               ldb       1,s
+               lsrb
+               lsrb
+               lsrb
+               lsrb
+               lda       b,x
+               bsr       WriteChar
+               ldb       1,s
+               andb      #$0F
+               lda       b,x
+               bsr       WriteChar
+               puls      d,x,y,pc
           
 * X = nul-terminated string to write
 WriteString
 loop@
-          lda  ,x+
-          beq  done
-          bsr  WriteChar
-          bra  WriteString
-done      rts          
+               lda  ,x+
+               beq  done
+               bsr  WriteChar
+               bra  WriteString
+done           rts          
 
 WriteChar
-          pshs      d,x
-          bsr       Write1
-          puls      d,x,pc
+               pshs      d,x
+               bsr       Write1
+               puls      d,x,pc
 
 Write1          
-		bsr		hidecursor		
+     		bsr		hidecursor		
 
-		ldx		V.EscVect,u
-		jmp		,x
+	     	ldx		V.EscVect,u
+		     jmp		,x
 
 ChkSpc
-		cmpa		#$20 			space or greater?
-		bcs		ChkESC			branch if not
+     		cmpa		#$20 			space or greater?
+	     	bcs		ChkESC			branch if not
 		
-wchar	suba		#$20
-		pshs		a
-		lda		V.CurRow,u
-		ldb		#G.Cols
-		mul
-		addb		V.CurCol,u
-		adca		#0
-		ldx		#SCRMEM
-		leax		d,x
-		puls		a
-		sta		,x
-		ldd		V.CurRow,u
-		incb
-		cmpb		#G.Cols
-		blt		ok
-		clrb
+wchar	     suba		#$20
+               pshs		a
+               lda		V.CurRow,u
+               ldb		#G.Cols
+               mul
+               addb		V.CurCol,u
+               adca		#0
+               ldx		#SCRMEM
+               leax		d,x
+               puls		a
+               sta		,x
+               ldd		V.CurRow,u
+               incb
+               cmpb		#G.Cols
+               blt		ok
+               clrb
 incrow
-		inca
-		cmpa		#G.Rows
-		blt		clrline
-SCROLL	EQU		1
-		IFNE		SCROLL
-		deca						set A to G.Rows - 1
-		pshs		d				save off Row/Col
-		ldx		#SCRMEM   		get start of screen memory
-		ldy		#G.Cols*(G.Rows-1)	set Y to size of screen minus last row
+     		inca
+	     	cmpa		#G.Rows
+     		blt		clrline
+SCROLL    	EQU		1
+               IFNE		SCROLL
+               deca						set A to G.Rows - 1
+               pshs		d				save off Row/Col
+               ldx		#SCRMEM   		get start of screen memory
+               ldy		#G.Cols*(G.Rows-1)	set Y to size of screen minus last row
 scroll_loop
-		ldd		G.Cols,x			get two bytes on next row
-		std		,x++				store on this row
-		leay		-2,y				decrement Y
-		bne		scroll_loop		branch if not 0
-		puls		d				recover Row/Col
-		ELSE
-		clra
-		ENDC
+               ldd		G.Cols,x			get two bytes on next row
+               std		,x++				store on this row
+               leay		-2,y				decrement Y
+               bne		scroll_loop		branch if not 0
+               puls		d				recover Row/Col
+               ELSE
+               clra
+               ENDC
 * clear line
-clrline	std		V.CurRow,u
-		bsr		DelLine
-		bra		drawcursor
-ok		std		V.CurRow,u
-		bra		drawcursor
+clrline   	std		V.CurRow,u
+               bsr		DelLine
+               bra		drawcursor
+ok   		std		V.CurRow,u
+	     	bra		drawcursor
 		
 * calculates the cursor location in screen memory
 * Exit: X = address of cursor
 *       All other regs preserved
 calcloc
-		pshs		d
-		lda		V.CurRow,u
-		ldb		#G.Cols
-		mul
-		addb		V.CurCol,u
-		adca		#0
-		ldx		#G.ScrStart
-		leax		d,x
-		puls		d,pc
+               pshs		d
+               lda		V.CurRow,u
+               ldb		#G.Cols
+               mul
+               addb		V.CurCol,u
+               adca		#0
+               ldx		#G.ScrStart
+               leax		d,x
+               puls		d,pc
 
 drawcursor
 *		bsr		calcloc
@@ -721,49 +721,49 @@ drawcursor
 		rts
 
 hidecursor
-		pshs		a
+     		pshs		a
 *		bsr		calcloc
 *		lda		V.CurChr,u
 *		sta		,x
 		puls		a,pc
 
 ChkESC
-		cmpa	#$1B			ESC?
-		lbeq	EscHandler
-		cmpa  #$0D		$0D?
-		bhi   drawcursor	branch if higher than
-		leax  <DCodeTbl,pcr	deal with screen codes
-		lsla  			adjust for table entry size
-		ldd   a,x		get address in D
-		jmp   d,x		and jump to routine
+               cmpa	     #$1B			ESC?
+               lbeq	     EscHandler
+               cmpa      #$0D		$0D?
+               bhi       drawcursor	branch if higher than
+               leax      <DCodeTbl,pcr	deal with screen codes
+               lsla  			adjust for table entry size
+               ldd       a,x		get address in D
+               jmp       d,x		and jump to routine
 
 * display functions dispatch table
-DCodeTbl	fdb   NoOp-DCodeTbl			$00:no-op (null)
-		fdb   CurHome-DCodeTbl		$01:HOME cursor
-		fdb   CurXY-DCodeTbl		$02:CURSOR XY
-		fdb   DelLine-DCodeTbl		$03:ERASE LINE
-		fdb   ErEOLine-DCodeTbl		$04:CLEAR TO EOL
-		fdb   Do05-DCodeTbl			$05:CURSOR ON/OFF
-		fdb   CurRght-DCodeTbl		$005e  $06:CURSOR RIGHT
-		fdb   NoOp-DCodeTbl			$07:no-op (bel:handled in VTIO)
-		fdb   CurLeft-DCodeTbl		$08:CURSOR LEFT
-		fdb   CurUp-DCodeTbl		$09:CURSOR UP
-		fdb   CurDown-DCodeTbl		$0A:CURSOR DOWN
-		fdb   ErEOScrn-DCodeTbl		$0B:ERASE TO EOS
-		fdb   ClrScrn-DCodeTbl		$0C:CLEAR SCREEN
-		fdb   Retrn-DCodeTbl		$0D:RETURN
+DCodeTbl  	fdb       NoOp-DCodeTbl			$00:no-op (null)
+               fdb       CurHome-DCodeTbl		$01:HOME cursor
+               fdb       CurXY-DCodeTbl		$02:CURSOR XY
+               fdb       DelLine-DCodeTbl		$03:ERASE LINE
+               fdb       ErEOLine-DCodeTbl		$04:CLEAR TO EOL
+               fdb       Do05-DCodeTbl			$05:CURSOR ON/OFF
+               fdb       CurRght-DCodeTbl		$005e  $06:CURSOR RIGHT
+               fdb       NoOp-DCodeTbl			$07:no-op (bel:handled in VTIO)
+               fdb       CurLeft-DCodeTbl		$08:CURSOR LEFT
+               fdb       CurUp-DCodeTbl		$09:CURSOR UP
+               fdb       CurDown-DCodeTbl		$0A:CURSOR DOWN
+               fdb       ErEOScrn-DCodeTbl		$0B:ERASE TO EOS
+               fdb       ClrScrn-DCodeTbl		$0C:CLEAR SCREEN
+               fdb       Retrn-DCodeTbl		$0D:RETURN
          
 DelLine
-		lda		V.CurRow,u
-		ldb		#G.Cols
-		mul
-		ldx		#SCRMEM
-		leax		d,x
-		lda		#G.Cols
-clrloop@	clr		,x+
-		deca
-		bne		clrloop@
-		rts
+     		lda		V.CurRow,u
+	     	ldb		#G.Cols
+		     mul
+     		ldx		#SCRMEM
+	     	leax		d,x
+		     lda		#G.Cols
+clrloop@	     clr		,x+
+     		deca
+	     	bne		clrloop@
+     		rts
 		
 ClrScrn
 ErEOScrn
@@ -774,81 +774,81 @@ CurXY
 ErEOLine
 Do05
 CurRght
-		bra		drawcursor
+	     	bra		drawcursor
 
 CurLeft
-		ldd		V.CurRow,u
-		beq		leave
-		decb
-		bpl		erasechar
-		ldb		#G.Cols-1
-		deca
-		bpl		erasechar
-		clra
+               ldd		V.CurRow,u
+               beq		leave
+               decb
+               bpl		erasechar
+               ldb		#G.Cols-1
+               deca
+               bpl		erasechar
+               clra
 erasechar
-		std		V.CurRow,u
-		ldb		#G.Cols
-		mul
-		addb		V.CurCol,u
-		adca		#0
-		ldx		#SCRMEM
-		leax		d,x
-		clr		1,x
+               std		V.CurRow,u
+               ldb		#G.Cols
+               mul
+               addb		V.CurCol,u
+               adca		#0
+               ldx		#SCRMEM
+               leax		d,x
+               clr		1,x
 		
-leave	ldd		V.CurRow,u
-		lbra		drawcursor
+leave	     ldd		V.CurRow,u
+               lbra		drawcursor
 
 CurDown
-		ldd		V.CurRow,u
-		lbra		incrow
+               ldd		V.CurRow,u
+     		lbra		incrow
 
 Retrn
-		lda		V.CurRow,u
-		ldb		#G.Cols
-		mul
-		addb		V.CurCol,u
-		adca		#0
-		ldx		#SCRMEM
-		leax		d,x
-		lda		#$00
-		sta		,x
-		clr		V.CurCol,u
-		lbra		drawcursor
+               lda		V.CurRow,u
+               ldb		#G.Cols
+               mul
+               addb		V.CurCol,u
+               adca		#0
+               ldx		#SCRMEM
+               leax		d,x
+               lda		#$00
+               sta		,x
+               clr		V.CurCol,u
+               lbra		drawcursor
 
 EscHandler
-		leax		EscHandler2,pcr
+     		leax		EscHandler2,pcr
 eschandlerout
-		stx		V.EscVect,u
-		lbra		drawcursor
+     		stx		V.EscVect,u
+	     	lbra		drawcursor
 
 EscHandler2
-		sta		V.EscCh1,u
-		leax		EscHandler3,pcr
-		bra		eschandlerout
+               sta		V.EscCh1,u
+               leax		EscHandler3,pcr
+               bra		eschandlerout
 
 EscHandler3
-		ldb		V.EscCh1,u
-		cmpb		#$32
-		beq		DoFore
-		cmpb		#$33
-		beq		DoBack
-		cmpb		#$34
-		beq		DoBord
+               ldb		V.EscCh1,u
+               cmpb		#$32
+               beq		DoFore
+               cmpb		#$33
+               beq		DoBack
+               cmpb		#$34
+               beq		DoBord
 eschandler3out
-		leax		ChkSpc,pcr
-		bra		eschandlerout
+               leax		ChkSpc,pcr
+               bra		eschandlerout
 
 DoFore
-*		sta		COLPF0
-		sta		COLPF1
-*		sta		COLPF3
-		bra		eschandler3out
+*    		sta		COLPF0
+	     	sta		COLPF1
+*	     	sta		COLPF3
+     		bra		eschandler3out
 DoBack
-		sta		COLPF2
-		bra		eschandler3out
+               sta		COLPF2
+               bra		eschandler3out
 DoBord
-		sta		COLBK
-		bra		eschandler3out
+               sta		COLBK
+               bra		eschandler3out
 		
 
 * Unused vectors routed here
