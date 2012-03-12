@@ -7,7 +7,7 @@
 BOOTROMS	= liber809_rommode.rom liber809_rammode.rom
 
 ALLROMS		= $(BOOTROMS)
-ALLPROGS       = Hello6809.bin
+ALLPROGS	= Hello6809.bin fuji.bin
 
 all:	$(ALLROMS) $(ALLPROGS)
 
