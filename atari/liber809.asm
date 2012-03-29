@@ -49,12 +49,12 @@ REVMAJOR       equ  0
 REVMINOR       equ  2
 
 
-KICKSTART      equ       $2000               address to load 'kick'
-KICKEND        equ       KICKSTART+8192
+ROMTOP         equ       $F400
+KICKSTART      equ       $8000               address to load 'kick'
+KICKEND        equ       $F400
 SCRMEM         equ       $0500
 SCRMEMEND      equ       $0500+(G.Rows*G.Cols)
 STACK          equ       SCRMEM
-ROMTOP         equ       $F400
 
 * Organization of Screen Managemnt variables
 V.CurRow       equ       SCRMEMEND+0
@@ -261,12 +261,12 @@ MountNameLen   equ  *-MountName
                fcb  00
 
 OKMsg          fcc       "OK"
-               fcb       $0D,$0A
+CRLF           fcb       $0D,$0A
                fcb       00
 
 LoadingMsg     fcc       "Loading $"
                fcb       00
-Loading2Msg    fcc       " bytes into location $"
+Loading2Msg    fcc       " bytes at location $"
                fcb       00
 
 FailedMsg      fcc       "FAIL"
@@ -360,22 +360,34 @@ loop@          lda       ,x+
 RAMCODE
 * The following is run from RAM
 * Copy ROMTOP-$FFFF from ROM to RAM
-               ldx       #ROMTOP
-               lda       PORTB
-               tfr       a,b
-               ora       #%00000001
-               andb      #%11111110
-copyloop@
+*               lda       PORTB
+*               tfr       a,b
+*               ora       #%00000001     ROM mode
+*               andb      #%11111110     RAM mode
+               lda       #%11111111
+               ldb       #%11111110
+* put in ROM mode
                sta       PORTB          ROM mode
-               bsr       RAMROMCheck    is it ROM?
-               bcc       GoCrazy        if not, go crazy
-               ldu       ,x
+* copy from ROM to RAM
+               ldx       #ROMTOP
+               ldy       #RAMLOC+$1000
+copyloop1@
+               ldu       ,x++
+               stu       ,y++
+               cmpx      #$0000
+               bne       copyloop1@
+
+* put in RAM mode
                stb       PORTB          RAM mode
-               bsr       RAMROMCheck    is it RAM?
-               bcs       GoCrazy        if not, go crazy
+* copy from low RAM to high RAM
+               ldx       #ROMTOP
+               ldy       #RAMLOC+$1000
+copyloop2@
+               ldu       ,y++
                stu       ,x++
                cmpx      #$0000
-               bne       copyloop@
+               bne       copyloop2@
+
 
                jmp       >Continue
 
@@ -410,7 +422,7 @@ gl@            inca
 RAMCODELEN     equ       *-RAMCODE
                ENDC
 
-Continue                      
+Continue          
                ldu       #SCRMEMEND
                lbsr	     VTIOInit
                
@@ -422,6 +434,14 @@ Continue
                
                leax      SIOMsg,pcr
                lbsr      WriteString
+
+* clear memory
+               ldx       #$8000
+               ldd       #$0000
+loop@
+               std       ,x++
+               cmpx      #$B400
+               bne       loop@
 
 * Tell DW Server we want to mount the named object
                lda       #OP_NAMEOBJ_MOUNT
@@ -445,7 +465,7 @@ Continue
                leax      OKMsg,pcr
                lbsr      WriteString
                
-* Object is mounted... now load 8192 bytes starting at KICKSTART
+* Object is mounted... now load bytes sarting at KICKSTART
                leax      LoadingMsg,pcr
                lbsr      WriteString
 
@@ -459,17 +479,25 @@ Continue
                ldd       #KICKSTART
                lbsr      WriteHexWord
 
-               tfr       d,x
+               leax      CRLF,pcr
+               lbsr      WriteString
+
+               ldx       #KICKSTART
                ldy       #$0000
                lda       #OP_READEX
+
 ReadLoop
 * Send Read Command
-*               cmpy #$0050
-*               bne  keepon
-*               leax $800,x
-*               leay 8,y            skip sectors $50-$57 ($D000-$D7FFF)
-*keepon
+               cmpx      #$D000
+               bne       keepon
+               leax      $800,x
+               leay      8,y            skip sectors $50-$57 ($D000-$D7FF)
+keepon
                pshs      a,x,y
+               pshs      d,x
+               tfr       x,d
+               lbsr      WriteHexWord
+               puls      d,x
                pshs      y              put LSN bits 15-0 on stack
                clr       ,-s            put LSN bits 23-16 on stack ($00)
                ldy       #$0000
@@ -511,9 +539,7 @@ ReRead
                lbsr      WaitABit
                ldb       #OP_REREADEX
                lda       #'?
-               pshs      b,x,y
                lbsr      WriteChar
-               puls      a,x,y     
                bra       ReadLoop
 ReadOk          
                lda       #'.
@@ -531,6 +557,9 @@ ReadOk
 
                ldd       #KICKSTART
                lbsr      WriteHexWord
+
+               leax      CRLF,pcr
+               lbsr      WriteString
 
                jmp       >KICKSTART
 

@@ -38,17 +38,17 @@ SndDurs     fcb     0,0,0,0             ;remaining duration of current note for 
 * - 2 mode lines of ANTIC mode $2 (text)
 DList       fcb     AEMPTY8,AEMPTY8,AEMPTY8
             fcb     ALMS+AMODE2
-            fdbs    FujiTxt1
+DListT1     fdbs    FujiTxt1
             fcb     AMODE2
             fcb     ALMS+ADLI+AMODED
-            fdbs    FujiMem
+DListM      fdbs    FujiMem
             fill    ADLI+AMODED,$4e
             fcb     AMODED
             fcb     ALMS+AMODE2
-            fdbs    FujiTxt2
+DListT2     fdbs    FujiTxt2
             fcb     AMODE2
             fcb     AVB+AJMP
-            fdbs    DList
+DListPtr    fdbs    DList
 
 * Screen display areas
             use     fujimem.asm
@@ -73,7 +73,7 @@ InitClr     lda     #CLR0
             sta     COLPF2
 
 * Convert static text, using simplified conversion to ANTIC screen characters
-InitTxt     ldx     #FujiTxt1
+InitTxt     leax    FujiTxt1,pcr
             ldy     #TXTSIZE*TXTCOUNT
 loop@       lda     ,x
             suba    #$20
@@ -82,13 +82,30 @@ loop@       lda     ,x
             bne     loop@
 
 * Set up custom display list
-InitDL      ldd     #DList
+InitDL      leax    DList,pcr
+            tfr     x,d
             exg     a,b
             std     DLISTL              ;point ANTIC to custom display list
+            std     DListPtr,pcr
+
+            leax    FujiTxt1,pcr
+            tfr     x,d
+            exg     a,b
+            std     DListT1,pcr
+
+            leax    FujiMem,pcr
+            tfr     x,d
+            exg     a,b
+            std     DListM,pcr
+
+            leax    FujiTxt2,pcr
+            tfr     x,d
+            exg     a,b
+            std     DListT2,pcr
 
 * Set up and enable non-maskable interrupt
-InitNMI     ldd     #NMIVect
-            std     $fffc               ;point 6809 to custom interrupt vector
+InitNMI     leax    NMIVect,pcr
+            stx     $fffc               ;point 6809 to custom interrupt vector
             lda     #$C0                
             sta     NMIEN               ;enable both display list and vertical blank interrupts
 
@@ -97,10 +114,10 @@ End         bra     End
 
 * Initialize sound pointers
 InitSnd
-            ldx     #SndAddrs
-            ldy     #Track0             ;initialize pointer to track 0
+            leax    SndAddrs,pcr
+            leay    Track0,pcr          ;initialize pointer to track 0
             sty     ,x++
-            ldy     #Track1             ;initialize pointer to track 1
+            leay    Track1,pcr          ;initialize pointer to track 1
             sty     ,x  
             rts
 
@@ -137,7 +154,13 @@ vcycle@     suba    #$a1                ;reset color for top line of Fuji
             bsr     DLIVect             ;chain to DLI routine
             rts
 
-SndVect     ldd     #$0000        
+
+
+SndVect     rts
+
+
+*** Need to rewrite this in order to be relocatable, but first I have to understand it!
+            ldd     #$0000        
             tfr     d,x                 ;start with voice #0
 
 PlayVoice   lda     SndDurs,x  
