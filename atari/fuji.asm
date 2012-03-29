@@ -21,14 +21,40 @@ VOICES      equ     2                   ;number of sound channels to use
 ****************************************
 * Main entry point
             org     $2000               ;kick load address
-Main        bra     InitPokey
+Main        lbra    InitPokey
 
 
 Clr0Next    fcb     CLR0                ;shadow storage for COLPF0
 Clr1Next    fcb     CLR1                ;shadow storage for COLPF1
 
-SndAddrs    fdb     0,0,0,0
-SndDurs     fcb     0,0,0,0
+SndAddrs    fdb     0,0,0,0             ;pointer to current note for each voice
+SndDurs     fcb     0,0,0,0             ;remaining duration of current note for each voice
+
+
+* Custom display list:
+* - 3 empty mode lines, to prevent overscan
+* - 2 mode lines of ANTIC mode $2 (text)
+* - 80 mode lines of ANTIC mode $D (graphics) with display list interrupts
+* - 2 mode lines of ANTIC mode $2 (text)
+DList       fcb     AEMPTY8,AEMPTY8,AEMPTY8
+            fcb     ALMS+AMODE2
+            fdbs    FujiTxt1
+            fcb     AMODE2
+            fcb     ALMS+ADLI+AMODED
+            fdbs    FujiMem
+            fill    ADLI+AMODED,$4e
+            fcb     AMODED
+            fcb     ALMS+AMODE2
+            fdbs    FujiTxt2
+            fcb     AMODE2
+            fcb     AVB+AJMP
+            fdbs    DList
+
+* Screen display areas
+            use     fujimem.asm
+
+* Music data
+            use     fujitune.asm
 
 
 * Initialize POKEY sound
@@ -36,9 +62,7 @@ InitPokey   lda     #$03
             sta     SKCTL               ;set POKEY 2-tone mode
             lda     #$00          
             sta     AUDCTL              ;set POKEY clock base to 15 KHz
-
             bsr     InitSnd
-      
 
 * Initialize GTIA color registers
 InitClr     lda     #CLR0
@@ -79,33 +103,6 @@ InitSnd
             ldy     #Track1             ;initialize pointer to track 1
             sty     ,x  
             rts
-
-
-* Custom display list:
-* - 3 empty mode lines, to prevent overscan
-* - 2 mode lines of ANTIC mode $2 (text)
-* - 80 mode lines of ANTIC mode $D (graphics) with display list interrupts
-* - 2 mode lines of ANTIC mode $2 (text)
-DList       fcb     AEMPTY8,AEMPTY8,AEMPTY8
-            fcb     ALMS+AMODE2
-            fdbs    FujiTxt1
-            fcb     AMODE2
-            fcb     ALMS+ADLI+AMODED
-            fdbs    FujiMem
-            fill    ADLI+AMODED,$4e
-            fcb     AMODED
-            fcb     ALMS+AMODE2
-            fdbs    FujiTxt2
-            fcb     AMODE2
-            fcb     AVB+AJMP
-            fdbs    DList
-
-* Screen display areas
-            use     fujimem.asm
-
-* Music data
-            use     fujitune.asm
-
 
 * Single vector to handle all non-maskable interrupts
 NMIVect     pshs    d,x,y               ;save register used during interrupt
@@ -158,7 +155,7 @@ LoadNote    tfr     x,d
             ora     ,y
             bne     PlayNote
             pshs    x
-            jsr     InitSnd             ;loop back to beginning at end of tune
+            bsr     InitSnd              ;loop back to beginning at end of tune
             puls    x
             bra     LoadNote
 
