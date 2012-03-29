@@ -2,7 +2,7 @@
 * Liber809 ReadMe
 *****************************
 
-This repostiory contains code for the Liber809 Project.
+This repository contains code for the Liber809 Project.
 
 Prerequisites
 =============
@@ -17,6 +17,7 @@ The Atari version of the Liber809 is designed to replace the 6502C
 microprocessor and has been verified to work on the following systems:
 - Atari XEGS
 - Atari 1200XL
+- Atari 800XL
 
 The liber809 ROM file is intended to replace the OS ROM found in the Atari.
 It resides in $F400-$FFFF of the ROM memory area and is composed of the
