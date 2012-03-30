@@ -20,15 +20,13 @@ VOICES      equ     2                   ;number of sound channels to use
 
 ****************************************
 * Main entry point
-            org     $2000               ;kick load address
 Main        lbra    InitPokey
 
 
-Clr0Next    fcb     CLR0                ;shadow storage for COLPF0
-Clr1Next    fcb     CLR1                ;shadow storage for COLPF1
+Clr0Next    equ     $0100               ;shadow storage for COLPF0
 
-SndAddrs    fdb     0,0,0,0             ;pointer to current note for each voice
-SndDurs     fcb     0,0,0,0             ;remaining duration of current note for each voice
+SndAddrs    equ     $0102             ;pointer to current note for each voice
+SndDurs     equ     $010A             ;remaining duration of current note for each voice
 
 
 * Custom display list:
@@ -112,9 +110,10 @@ InitNMI     leax    NMIVect,pcr
 * End of main program
 End         bra     End
 
+
 * Initialize sound pointers
 InitSnd
-            leax    SndAddrs,pcr
+            ldx     #SndAddrs
             leay    Track0,pcr          ;initialize pointer to track 0
             sty     ,x++
             leay    Track1,pcr          ;initialize pointer to track 1
@@ -154,13 +153,7 @@ vcycle@     suba    #$a1                ;reset color for top line of Fuji
             bsr     DLIVect             ;chain to DLI routine
             rts
 
-
-
-SndVect     rts
-
-
-*** Need to rewrite this in order to be relocatable, but first I have to understand it!
-            ldd     #$0000        
+SndVect     ldd     #$0000        
             tfr     d,x                 ;start with voice #0
 
 PlayVoice   lda     SndDurs,x  
@@ -178,7 +171,7 @@ LoadNote    tfr     x,d
             ora     ,y
             bne     PlayNote
             pshs    x
-            bsr     InitSnd              ;loop back to beginning at end of tune
+            bsr     InitSnd             ;loop back to beginning at end of tune
             puls    x
             bra     LoadNote
 
@@ -211,4 +204,4 @@ UpdateDur   dec     SndDurs,x           ;decrement remaining duration
             bne     PlayVoice           ;play next voice
             rts
 
-Padding     fill    $ff,$4000-*         ;extend binary to 8 KB
+Padding     fill    $ff,$2000-*         ;extend binary to 8 KB
