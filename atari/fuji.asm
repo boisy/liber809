@@ -25,8 +25,8 @@ Main        lbra    InitPokey
 
 Clr0Next    equ     $0100               ;shadow storage for COLPF0
 
-SndAddrs    equ     $0102             ;pointer to current note for each voice
-SndDurs     equ     $010A             ;remaining duration of current note for each voice
+SndAddrs    equ     $0102               ;pointer to current note for each voice
+SndDurs     equ     $010A               ;remaining duration of current note for each voice
 
 
 * Custom display list:
