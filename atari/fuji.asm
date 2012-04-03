@@ -18,16 +18,13 @@ CLR2        equ     $00                 ;text background
 VOICES      equ     2                   ;number of sound channels to use
 
 
-****************************************
-* Main entry point
-Main        lbra    InitPokey
-
-
 Clr0Next    equ     $0100               ;shadow storage for COLPF0
 
 SndAddrs    equ     $0102               ;pointer to current note for each voice
 SndDurs     equ     $010A               ;remaining duration of current note for each voice
 
+
+LoadAddr    equ     $8000
 
 * Custom display list:
 * - 3 empty mode lines, to prevent overscan
@@ -54,6 +51,9 @@ DListPtr    fdbs    DList
 * Music data
             use     fujitune.asm
 
+
+****************************************
+* Main entry point
 
 * Initialize POKEY sound
 InitPokey   lda     #$03          
@@ -204,4 +204,7 @@ UpdateDur   dec     SndDurs,x           ;decrement remaining duration
             bne     PlayVoice           ;play next voice
             rts
 
-Padding     fill    $ff,$2000-*         ;extend binary to 8 KB
+Padding     fill    $ff,$73FE-*         ;extend binary to $7400
+
+*** Address that F/W will jmp to
+            fdb     LoadAddr+InitPokey

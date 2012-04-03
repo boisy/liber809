@@ -46,7 +46,7 @@
 
 * Version
 REVMAJOR       equ  0
-REVMINOR       equ  2
+REVMINOR       equ  3
 
 
 ROMTOP         equ       $F400
@@ -440,7 +440,11 @@ Continue
                ldd       #$0000
 loop@
                std       ,x++
-               cmpx      #$B400
+               cmpx      #$D000
+               bne       next@
+               leax      $800,x
+               bra       loop@
+next@          cmpx      #KICKEND
                bne       loop@
 
 * Tell DW Server we want to mount the named object
@@ -555,13 +559,15 @@ ReadOk
                leax      JumpMsg,pcr
                lbsr      WriteString
 
-               ldd       #KICKSTART
+               ldd       KICKEND-2
+*               ldd       #KICKSTART
                lbsr      WriteHexWord
 
                leax      CRLF,pcr
                lbsr      WriteString
 
-               jmp       >KICKSTART
+*               jmp       >KICKSTART
+               jmp       [>KICKEND-2]
 
 MountFailed
                leax      FailedMsg,pcr
@@ -661,13 +667,24 @@ WriteHexWord
                bsr       WriteChar
                puls      d,x,y,pc
           
+* X = hi-byte-terminated string to write
+WriteHiString
+loop@
+               lda  ,x+
+               bmi  hi@
+               bsr  WriteChar
+               bra  loop@
+hi@            anda #%01111111
+               bra  WriteChar
+               rts          
+
 * X = nul-terminated string to write
 WriteString
 loop@
                lda  ,x+
                beq  done
                bsr  WriteChar
-               bra  WriteString
+               bra  loop@
 done           rts          
 
 WriteChar
@@ -676,10 +693,12 @@ WriteChar
                puls      d,x,pc
 
 Write1          
+               pshs      u
+               ldu       #SCRMEMEND
      		bsr		hidecursor		
-
 	     	ldx		V.EscVect,u
-		     jmp		,x
+		     jsr		,x
+		     puls      u,pc
 
 ChkSpc
      		cmpa		#$20 			space or greater?
@@ -900,14 +919,16 @@ DWIORENT       fdb       DWRead
 DWIOWENT       fdb       DWWrite
 WRCHARENT      fdb       WriteChar
 WRSTRENT       fdb       WriteString
+WRHISTRENT     fdb       WriteHiString
+WRHEXENT       fdb       WriteHexWord
 
 * 6809 Vectors - these go at the very last 16 bytes of ROM
      	     fill      $FF,$FFF0-*
 	          fdb		$0000		Reserved
-	          fdb		SWI3Vct		SWI3
-	          fdb		SWI2Vct		SWI2
-	          fdb		FIRQVct		/FIRQ
-	          fdb		IRQVct		/IRQ
-	          fdb		SWIVct		SWI
-	          fdb		NMIVct		/NMI
+               fdb       $0100
+               fdb       $0103
+               fdb       $010F
+               fdb       $010C
+               fdb       $0106
+               fdb       $0109
 	          fdb		RESETVct	     /RESET
