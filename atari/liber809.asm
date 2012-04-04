@@ -59,9 +59,10 @@ STACK          equ       SCRMEM
 * Organization of Screen Managemnt variables
 V.CurRow       equ       SCRMEMEND+0
 V.CurCol       equ       SCRMEMEND+1
-V.EscVect      equ       SCRMEMEND+2
-V.EscCh1       equ       SCRMEMEND+4
-V.NODrive      equ       SCRMEMEND+6
+V.CurChr       equ       SCRMEMEND+2
+V.EscVect      equ       SCRMEMEND+3
+V.EscCh1       equ       SCRMEMEND+5
+V.NODrive      equ       SCRMEMEND+7
 
 BAUD192K  	EQU		$2800
 BAUD384K  	EQU		$1000
@@ -69,8 +70,6 @@ BAUD576K  	EQU		$0800
 BAUD1152K 	EQU		$0400
 BAUDRATE       EQU       BAUD576K
 
-* Set the following to 1 to run in All-RAM Mode!
-*ALLRAM_MODE    EQU       1
 RAMLOC         equ       $1000
 
                org       ROMTOP
@@ -266,7 +265,7 @@ CRLF           fcb       $0D,$0A
 
 LoadingMsg     fcc       "Loading $"
                fcb       00
-Loading2Msg    fcc       " bytes at location $"
+Loading2Msg    fcc       " bytes at $"
                fcb       00
 
 FailedMsg      fcc       "FAIL"
@@ -499,6 +498,8 @@ ReadLoop
 keepon
                pshs      a,x,y
                pshs      d,x
+               lda       #'$
+               lbsr      WriteChar
                tfr       x,d
                lbsr      WriteHexWord
                puls      d,x
@@ -546,7 +547,7 @@ ReRead
                lbsr      WriteChar
                bra       ReadLoop
 ReadOk          
-               lda       #'.
+               lda       #$0D
                pshs      b,x,y
                lbsr      WriteChar
                puls      a,x,y
@@ -616,24 +617,19 @@ clearLoop@
 	     	sta	     CHBASE
 		
 * set background color
-     		lda	     #$00
+     		clra
  	     	sta	     COLBK
 
 * set text color
-     		lda	     #$0F
-* 	     	sta	     COLPF0
+     		ldd	     #$0F*256+$94
  		     sta	     COLPF1
-*     		sta	     COLPF3
-	     	lda	     #$94
- 		     sta	     COLPF2
+ 		     stb	     COLPF2
  		
-* tell ANTIC to start DMA
-     		lda	     #$22
- 	     	sta	     DMACTL
+* tell ANTIC to start DMA and enable character set 2
 
-* tell ANTIC to enable character set 2
-     		lda	     #$02
- 	     	sta	     CHACTL
+     		ldd	     #$22*256+$02
+ 	     	sta	     DMACTL
+ 	     	stb	     CHACTL
 
 initex	     puls	     u,pc
 
@@ -669,36 +665,34 @@ WriteHexWord
           
 * X = hi-byte-terminated string to write
 WriteHiString
+               pshs a,x
 loop@
                lda  ,x+
                bmi  hi@
                bsr  WriteChar
                bra  loop@
 hi@            anda #%01111111
-               bra  WriteChar
-               rts          
+               bsr  WriteChar
+done           puls a,x,pc
 
 * X = nul-terminated string to write
 WriteString
+               pshs a,x
 loop@
                lda  ,x+
                beq  done
                bsr  WriteChar
                bra  loop@
-done           rts          
 
 WriteChar
-               pshs      d,x
-               bsr       Write1
-               puls      d,x,pc
-
-Write1          
-               pshs      u
+               pshs      d,x,y,u
                ldu       #SCRMEMEND
      		bsr		hidecursor		
 	     	ldx		V.EscVect,u
 		     jsr		,x
-		     puls      u,pc
+		     bsr       drawcursor
+		     puls      d,x,y,u,pc
+
 
 ChkSpc
      		cmpa		#$20 			space or greater?
@@ -742,9 +736,9 @@ scroll_loop
 * clear line
 clrline   	std		V.CurRow,u
                bsr		DelLine
-               bra		drawcursor
+               rts
 ok   		std		V.CurRow,u
-	     	bra		drawcursor
+ret            rts
 		
 * calculates the cursor location in screen memory
 * Exit: X = address of cursor
@@ -761,25 +755,25 @@ calcloc
                puls		d,pc
 
 drawcursor
-*		bsr		calcloc
-*		lda		,x
-*		sta		V.CurChr,u
-*		lda		#$80
-*		sta		,x
+		bsr		calcloc
+		lda		,x
+		sta		V.CurChr,u
+		lda		#$80
+		sta		,x
 		rts
 
 hidecursor
-     		pshs		a
-*		bsr		calcloc
-*		lda		V.CurChr,u
-*		sta		,x
+    		pshs		a
+		bsr		calcloc
+		lda		V.CurChr,u
+		sta		,x
 		puls		a,pc
 
 ChkESC
                cmpa	     #$1B			ESC?
                lbeq	     EscHandler
                cmpa      #$0D		$0D?
-               bhi       drawcursor	branch if higher than
+               bhi       ret	branch if higher than
                leax      <DCodeTbl,pcr	deal with screen codes
                lsla  			adjust for table entry size
                ldd       a,x		get address in D
@@ -822,7 +816,7 @@ CurXY
 ErEOLine
 Do05
 CurRght
-	     	bra		drawcursor
+	     	rts
 
 CurLeft
                ldd		V.CurRow,u
@@ -842,32 +836,21 @@ erasechar
                ldx		#SCRMEM
                leax		d,x
                clr		1,x
-		
-leave	     ldd		V.CurRow,u
-               lbra		drawcursor
+leave	     rts
 
 CurDown
                ldd		V.CurRow,u
      		lbra		incrow
 
 Retrn
-               lda		V.CurRow,u
-               ldb		#G.Cols
-               mul
-               addb		V.CurCol,u
-               adca		#0
-               ldx		#SCRMEM
-               leax		d,x
-               lda		#$00
-               sta		,x
                clr		V.CurCol,u
-               lbra		drawcursor
+               rts
 
 EscHandler
      		leax		EscHandler2,pcr
 eschandlerout
      		stx		V.EscVect,u
-	     	lbra		drawcursor
+	     	rts
 
 EscHandler2
                sta		V.EscCh1,u
