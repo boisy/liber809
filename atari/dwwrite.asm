@@ -15,7 +15,7 @@
 * into 6809 assembly language by Boisy G. Pitre.
 *
 RMSEND    equ       %11101111
-SKSEND    equ       $23
+SKSEND    equ       %00100011
 MSKSEND   equ       %00010000
 IMSEND    equ       %00010000
 IMSCPL    equ       $08
@@ -28,13 +28,11 @@ DWWrite
 *          lda       #$A0
           lda       #$A8
           sta       AUDC4
-          IFNE      SHORT_DELAY_BEFORE_SEND
 * short delay before send
           clra
 shortdelay@
           deca
           bne       shortdelay@
-          ENDC
           orcc      #$50                ; mask interrupts
           lda	     #SKSEND        	; set pokey to transmit data mode
           sta	     SKCTL
