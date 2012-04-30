@@ -1,0 +1,20 @@
+INTRODUCTION
+============
+The Liber809 board was designed to mate the Motorola 6809E microprocessor to 8-bit computer systems based on the 6502C microprocessor.  It is a complete replacement and as such, requires complete removal of the 6502C microprocessor from the motherboard, as well as the firmware ROM.
+
+BILL OF MATERIALS
+=================
+The following materials comprise the Liber809 product:
+o The board with 68B09E and support chips installed
+o A 40 pin machine socket for pin stability.  This socket should be plugged into an existing socket on the motherboard and should NOT be soldered directly into 
+
+INSTALLATION
+============
+Installing the Liber809 on requires that both the CPU and the ROM on the motherboard be socketed.  If this is not the case, then the CPU and ROM must be desoldered and sockets put in place.  IF YOU DO NOT HAVE THE EXPERTISE TO DO THIS, THEN YOU SHOULD HAVE SOMEONE QUALIFIED TO DO THIS.
+
+To install, simply remove the 6502C from the socket and insert the Liber809 board in its place.  Then, remove the ROM from its socket and insert the Liber809 ROM socket in its place.
+
+OPERATION
+=========
+Power up the system.  If all goes well, you should see the Liber809 boot screen appear.
+
