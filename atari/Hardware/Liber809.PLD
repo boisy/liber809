@@ -14,7 +14,7 @@ PIN  2   =  RDY ;
 PIN  3   =  PH0_B ;
 PIN  4   =  PH0_C ;
 PIN  5   =  HALT ;
-PIN  6   =  RW_N ;
+PIN  6   =  RW09_N ;
 PIN  7   =  IN1 ;
 PIN  8   =  IN2 ;
 PIN  9   =  IN3 ;
@@ -22,32 +22,35 @@ PIN  9   =  IN3 ;
 /* PIN  10 = GND ; */
 /* PIN  11 = !OE ; */
 /* *************** OUTPUT PINS *********************/
-PIN 12  =  PH1 ;
-PIN 13  =  PH2 ;
-PIN 14  =  E ;
-PIN 15  =  TSC ;
-PIN 16  =  RW_O ;
-PIN 17  =  OUT1 ;
-PIN 18  =  OUT2 ;
-PIN 19  =  OUT3 ;
+PIN 12  =  OUT2 ;
+PIN 13  =  OUT3 ;
+PIN 14  =  OUT1 ;
+PIN 15  =  E ;
+PIN 16  =  PH1 ;
+PIN 17  =  RW02_N ;
+PIN 18  =  PH2 ;
+PIN 19  =  TSC ;
 /* PIN 20 = Vcc ; */
 
-PH1 = !PH0_B ;
-
-PH2 = PH0_C ;
+/* IN2 is OUT2 looped back by traces on the PCB */
+/*   IN2 = !PH0_B */
+PH1 = IN2 ;
+PH2 = !IN2 ;
 
 TSC.D = !HALT ;
 
-E = !(!PH0_C
+E = !(!PH0_B
      # TSC
      # !RDY);
 
-RW_O =   RW_N
+RW02_N =   RW09_N
        # TSC;
 
-OUT1 = TSC ;
+OUT1 = (!PH0_B
+       # TSC
+       # !RDY);
 
-OUT2 = TSC ;
+OUT2 = !PH0_B ;
 
-OUT3 = TSC ;
+OUT3 = IN2 ;
 
