@@ -60,6 +60,34 @@ ATARI.D        set       1
                ttl       NitrOS-9 System Definitions for the Atari XE/XL
 
 
+
+**********************************
+* Power Line Frequency Definitions
+*
+Hz50           equ       1                   Assemble clock for 50 hz power
+Hz60           equ       2                   Assemble clock for 60 hz power
+PwrLnFrq       set       Hz60                Set to Appropriate freq
+
+
+**********************************
+* Ticks per second
+*
+               ifeq      PwrLnFrq-Hz50
+TkPerSec       set       50
+               else      
+TkPerSec       set       60
+               endc      
+
+
+*************************************************
+*
+* NitrOS-9 Level 1 Section
+*
+*************************************************
+
+HW.Page        set       $FF                 Device descriptor hardware page
+
+
 ********************************************************************
 * NitrOS-9 Memory Definitions for the Atari XE/XL
 *
@@ -73,8 +101,7 @@ ATARI.D        set       1
 G.Cols         equ       40
 G.Rows         equ       24
 G.ScrStart     equ       $0500
-G.DList        equ       G.ScrStart+(G.Cols*G.Rows)
-G.DListSize    equ       64
+G.ScrEnd       equ       G.ScrStart+(G.Cols*G.Rows)
 
 * The Character Set must be aligned to a 4K address.  We can really only
 * guarnatee that in the Krn module, which is always at the end of RAM.  So
@@ -84,7 +111,15 @@ G.CharSetAddr  equ       $F800
 * POKEY requires shadow registers.  We allocate them in the kernel's DP
 * (Yes, we are stealing an existing variable that is so old it should be
 *  removed from os9defs)
-D.IRQENShdw    equ       $001C
+D.IRQENShdw    equ       $02               ; was D.WDBtDr
+D.SKCTLShdw    equ       $03               ; was D.SWPage
+
+* The clock interrupt is driven by the unmaskable NMI.  Therefore,
+* the rbdw3 driver uses the DWIOSEMA flag in the D.ATARIFLAGS field as
+* a signal, setting it before doing an DW operation and clearing it after.
+* The clock ISR checks if this flag is set, and, if so, defers the OP_TIME
+* command to the server.
+DWIOSEMA       equ       %10000000
 
 
 ********************************************************************
@@ -235,6 +270,8 @@ IRQEN.TIMER1   equ       %00000001
 SKCTL          equ       POKEY+$0F           ;serial port and keyboard control
 SKCTL.FORECEBREAK equ       %10000000
 SKCTL.SERMODECTRLMASK equ       %01110000
+SKCTL.SERMODEOUT equ       %00100000
+SKCTL.SERMODEIN  equ       %00010000
 SKCTL.TWOTONEMODE equ       %00001000
 SKCTL.FASTPOTSCAN equ       %00000100
 SKCTL.KEYBRDSCAN equ       %00000010
@@ -315,4 +352,4 @@ AMODED         equ       $0D
 AMODEE         equ       $0E
 AMODEF         equ       $0F
 
-               endc
+               endc      

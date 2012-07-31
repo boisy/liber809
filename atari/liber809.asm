@@ -46,7 +46,7 @@
 
 * Version
 REVMAJOR       equ  0
-REVMINOR       equ  3
+REVMINOR       equ  4
 
 
 ROMTOP         equ       $F400
@@ -71,6 +71,17 @@ BAUD1152K 	EQU		$0400
 BAUDRATE       EQU       BAUD576K
 
 RAMLOC         equ       $1000
+
+Entire         EQU       %10000000           Full Register Stack flag
+FIRQMask       EQU       %01000000           Fast-Interrupt Mask bit
+HalfCrry       EQU       %00100000           Half Carry flag
+IRQMask        EQU       %00010000           Interrupt Mask bit
+Negative       EQU       %00001000           Negative flag
+Zero           EQU       %00000100           Zero flag
+TwosOvfl       EQU       %00000010           Two's Comp Overflow flag
+Carry          EQU       %00000001           Carry bit
+IntMasks       EQU       IRQMask+FIRQMask
+Sign           EQU       %10000000           sign bit
 
                org       ROMTOP
 
@@ -462,6 +473,7 @@ next@          cmpx      #KICKEND
                lbsr      DWRead
                puls      d
                lbcs      MountFailed
+               lbne      MountFailed
                tsta
                lbeq      MountFailed
                sta       V.NODrive,u
@@ -519,9 +531,8 @@ keepon
                clra
                lbsr      DWRead
 * Note: we ignore any error in reading and send whatever CRC we have.
-*               bcc      sendcrc
-*               puls     a,x,y
-*               bra      ReRead
+               bcs       uhoh
+               bne       uhoh
           
 * Send CRC
 sendcrc
@@ -538,6 +549,8 @@ sendcrc
                clra
                lbsr      DWRead          
                puls      d,x,y
+               bcs       ReRead
+               bne       ReRead
                tsta
                beq       ReadOk
 ReRead
@@ -554,7 +567,7 @@ ReadOk
                leax      $100,x
                leay      1,y
                cmpx      #KICKEND
-               bne       ReadLoop
+               lbne      ReadLoop
                ldx       -2,x
 
                leax      JumpMsg,pcr
@@ -569,6 +582,10 @@ ReadOk
 
 *               jmp       >KICKSTART
                jmp       [>KICKEND-2]
+
+uhoh
+               puls     a,x,y
+               bra      ReRead
 
 MountFailed
                leax      FailedMsg,pcr

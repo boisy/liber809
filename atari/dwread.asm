@@ -1,7 +1,10 @@
+*******************************************************
+*
 * DWRead
 *    Receive a response from the DriveWire server.
 *    Times out if serial port goes idle for more than 1.4 (0.7) seconds.
 *    Serial data format:  1-8-N-1
+*    4/12/2009 by Darren Atkinson
 *
 * Entry:
 *    X  = starting address where data is to be stored
@@ -13,54 +16,70 @@
 *    Y  = checksum
 *    U is preserved.  All accumulators are clobbered
 *
+
+
+* ATARI SIO Version
+TIMEOUT   equ       $1000
 DWRead                    
-          clrb                     clear carry
-          pshs      cc,a,x,y,u
+          clrb                     clear Carry & Zero CC flags
+          pshs      cc,dp,a,x,y,u
+          tfr       b,dp
+          setdp     $00
           tfr       x,u
           ldx       #$0000
-          orcc      #$50
-*          lda       D.IRQENSHDW
+          orcc      #IntMasks
+*          lda       D.IRQENShdw
 *          sta       IRQEN
 *          ora       #%00100000
 * enable the serial input interrupt
           
-          ldb  SERIN               read what is in the buffer
-          lda	#$13
-          sta	SKCTL
-          sta	SKRES
-
+          ldb       SERIN               read what is in the buffer
+          lda	    #SKCTL.SERMODEIN|SKCTL.KEYBRDSCAN|SKCTL.KEYDEBOUNCE
+          sta	    SKCTL
+          sta	    SKRES
 inloop@
-          lda       D.IRQENSHDW
-          ora       #%00100000
+          lda       D.IRQENShdw
+          ora       #IRQEN.SERINRDY
+          sta       D.IRQENShdw
           sta       IRQEN
-          ldd       #$0000
-loop@
-          subd      #$0001
-          beq       outtahere@
+* timing loop to read a character from the serial chip
+          ldd       #TIMEOUT
+loop@     subd      #$0001
+          beq       overrun_error@
           pshs      b
           ldb       IRQST
-          bitb      #%00100000
+          bitb      #IRQST.SERINRDY
           puls      b
           bne       loop@
           ldb       SERIN
-          lda       D.IRQENSHDW
+          lda       D.IRQENShdw
+          anda      #^IRQEN.SERINRDY
+          sta       D.IRQENShdw
           sta       IRQEN
 * check for framing error
           lda       SKSTAT
-          bpl       outtahere@	framing error
+          bpl       framing_error@	framing error
           lsla
-          bpl       outtahere@	data input overrun
+          bcc       overrun_error@	data input overrun
           stb       ,u+
           abx
           leay      -1,y
           bne       inloop@
-          stx       4,s
-bye
-          sta	     SKRES          clear framing or data input overrun bits
-          puls      cc,a,x,y,u,pc
+bye@      sta	    SKRES          clear framing or data input overrun bits
+          stx       5,s
+          puls      cc,dp,a,x,y,u,pc
+framing_error@
+          lda       ,s
+          ora       #Carry
+          sta       ,s
+          bra       outtahere@
+overrun_error@
+          lda       ,s
+          anda      #^Zero
+          sta       ,s 
 outtahere@
-          sta	     SKRES          clear framing or data input overrun bits
-          puls      cc,a
-          stx       2,s
-          orcc      #$01
-          puls      x,y,u,pc
+          lda       D.IRQENShdw
+          anda      #^IRQEN.SERINRDY
+          sta       D.IRQENShdw
+          sta       IRQEN
+          bra       bye@
