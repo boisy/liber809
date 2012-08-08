@@ -298,7 +298,7 @@ RESETVct
                orcc	     #$50
                lds	     #STACK
 
-* clear the I/O space between $D000-$D3FFF
+* clear the I/O space between $D000-$D3FF
 ClearIO
                clr       D.IRQENSHDW
                
