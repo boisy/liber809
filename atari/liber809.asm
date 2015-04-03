@@ -46,7 +46,7 @@
 
 * Version
 REVMAJOR       equ  0
-REVMINOR       equ  4
+REVMINOR       equ  5
 
 
 ROMTOP         equ       $F400
@@ -555,9 +555,9 @@ sendcrc
                beq       ReadOk
 ReRead
                lbsr      WaitABit
-               ldb       #OP_REREADEX
                lda       #'?
                lbsr      WriteChar
+               lda       #OP_REREADEX *v0.5 - Fixed
                bra       ReadLoop
 ReadOk          
                lda       #$0D
