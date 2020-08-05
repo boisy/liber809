@@ -1,4 +1,4 @@
-# Liber809 ReadMe
+# The Liber809
 
 This repository contains code for the Liber809 Project.
 
@@ -21,5 +21,10 @@ The Liber809 ROM file replaces the OS ROM found in the Atari.  It resides in $F4
 - dwwrite.asm: the DriveWire write routine for the Atari SIO
 - atari.d: definitions file for the Atari XL/XE
 
-The Liber809 boot ROM expects the Atari to be connected to the DriveWire 4 server (http://sites.google.com/site/drivewire4/) via the SIO port.  After setting up hardware, it asks the DriveWire 4 server for a file called 'kick', expected to be up to a 32K binary file with 6809 code.  The contents of kick are loaded, and execution jumps to address $8000.
+The Liber809 boot ROM expects the Atari to be connected to a computer via the SIO port running a DriveWire server. There are a number to choose from:
+
+- pyDriveWire (https://github.com/n6il/pyDriveWire) - A Python-based DriveWire server that is being maintained.
+- DriveWire 4 Java Server (http://sites.google.com/site/drivewire4/) - This is no longer being maintained, and is probably suitable for older computers.
+
+The Liber809 ROM sets up hardware, then requests a file called 'kick' from the DriveWire server. This file is a 32K binary file with 6809 code.  The ROM loads the contents of the file starting at address $8000 in the Atari's RAM, then begins executing at that address.
 
