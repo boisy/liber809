@@ -1,6 +1,6 @@
 # The Liber809
 
-This repository contains code for the Liber809 Project. The Liber809 is a daughterboard that fits inside of Atari 8-bit computers such as that 600XL, 130XE, XEGS, etc. It replaces the 6502 and internal ROM with a 6809 and its own ROM.
+This repository contains code for the Liber809 Project. The Liber809 is a daughterboard that fits inside of Atari 8-bit computers; it replaces the 6502 and internal ROM with a 6809 and its own ROM.
 
 ## Prerequisites
 All 6809 sources are built with the 'mamou' assembler, available from the ToolShed project on SourceForge:
