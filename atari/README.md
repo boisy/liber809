@@ -43,7 +43,7 @@ If you have a Liber809 Kit, you'll need to put it together. **This requires sold
 
 5. Insert the electrolytic capacitor in the holes next to C4 on top of the board. Adhere to the polarity of the capacitor! Solder from underneath.
 
-6. If your board is labeled "Liber809 Ver 2.0", run three bodge wires on the board. Run a bodge wire from pin 13 of the GAL to pin 1 of the GAL. Then run a bodge wire from pin 14 of the GAL to pin 1 of the DS1100. Finally, run a bodge wire from pin 3 of the GAL to pin 36 of the 6809.
+6. If your board is labeled "Liber809 Ver 2.0", run three bodge wires on the board. Run a bodge wire from pin 13 of the GAL to pin 1 of the GAL. Then run a bodge wire from pin 14 of the GAL to pin 1 of the DS1100. Finally, run a bodge wire from pin 3 of the GAL to pin 37 of the 6809.
 	
 Insert the preprogrammed GAL into the 20 pin socket and the 6809 CPU into the 40 pin socket. Adhere to the pinout and insert them in the correct orientation. Then insert the 40 pin machine socket into the bottom pins. This gives you a "sacrificial" socket that you can remove in case any of the pins bend or break.
 
